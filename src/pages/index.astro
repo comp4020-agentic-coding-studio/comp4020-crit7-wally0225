@@ -1,8 +1,40 @@
 ---
-import { listMessages } from "../lib/db";
+import {
+  getCurrentSemester,
+  getStudentSpecialisationId,
+  listCourses,
+  listOfferedCourseIds,
+  listPrerequisites,
+  listRequirements,
+  listSemesters,
+  listSpecialisations,
+  listTakenCourseIds,
+} from "../lib/db";
+import { planFor } from "../lib/recommend";
 import "../styles.css";
 
-const messages = listMessages();
+const semester = getCurrentSemester();
+const semesters = listSemesters();
+const specialisations = listSpecialisations();
+const specialisationId = getStudentSpecialisationId();
+const takenCourseIds = listTakenCourseIds();
+const courses = listCourses();
+const courseById = new Map(courses.map((c) => [c.id, c]));
+
+const plan = planFor({
+  specialisationId,
+  takenCourseIds,
+  offeredCourseIds: listOfferedCourseIds(semester.id),
+  requirements: listRequirements(specialisationId),
+  prerequisites: listPrerequisites(),
+  courses,
+});
+
+const currentSpecialisation = specialisations.find((s) => s.id === specialisationId);
+const takenCourses = takenCourseIds
+  .map((id) => courseById.get(id))
+  .filter((c): c is NonNullable<typeof c> => c !== undefined);
+const nextSemester = semesters[semesters.findIndex((s) => s.id === semester.id) + 1];
 ---
 
 <!doctype html>
@@ -10,44 +42,115 @@ const messages = listMessages();
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>COMP4020 prototype</title>
+    <title>Degree planner — dashboard</title>
   </head>
   <body>
     <nav aria-label="site">
-      <a href="/">Guestbook</a>
+      <a href="/">Dashboard</a>
+      <a href="/courses/">Courses</a>
       <a href="/readme/">About</a>
     </nav>
     <main>
-      <h1>Guestbook</h1>
-      <p>
-        A minimal full-stack starter: messages live in SQLite on the machine's
-        volume (state survives a reload and a redeploy), and new messages
-        appear in every open tab over a server-sent-events stream — open this
-        page twice and sign it in one. Replace all of this with your own
-        prototype.
-      </p>
-      <form method="post" action="/api/messages">
-        <label for="body">Leave a message</label>
-        <input id="body" name="body" required maxlength="500" />
-        <button>Sign</button>
-      </form>
-      <ul id="messages">
-        {messages.map((message) => <li>{message.body}</li>)}
-      </ul>
+      <h1>Master of Computing planner</h1>
+
+      <section aria-label="current status">
+        <p>
+          <strong>{semester.label}</strong> · specialising in <strong>{currentSpecialisation?.name}</strong>
+        </p>
+        <p>{plan.unitsDone} / {plan.unitsRequired} required units completed</p>
+
+        <form method="post" action="/api/specialisation">
+          <label for="specialisationId">Switch specialisation</label>
+          <select id="specialisationId" name="specialisationId">
+            {
+              specialisations.map((s) => (
+                <option value={s.id} selected={s.id === specialisationId}>
+                  {s.name}
+                </option>
+              ))
+            }
+          </select>
+          <button>Switch</button>
+        </form>
+
+        {
+          nextSemester && (
+            <form method="post" action="/api/semester">
+              <button>Advance to {nextSemester.label}</button>
+            </form>
+          )
+        }
+      </section>
+
+      <section aria-label="recommended courses">
+        <h2>Take this semester</h2>
+        {
+          plan.takeThisSemester.length === 0 ? (
+            <p>Nothing required is available to take right now.</p>
+          ) : (
+            <ul>
+              {plan.takeThisSemester.map((course) => (
+                <li>
+                  {course.code} — {course.title}
+                  <form method="post" action="/api/taken">
+                    <input type="hidden" name="courseId" value={course.id} />
+                    <input type="hidden" name="back" value="/" />
+                    <button>Mark complete</button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+
+        <h2>Electives available</h2>
+        {
+          plan.electivesAvailable.length === 0 ? (
+            <p>No electives available this semester.</p>
+          ) : (
+            <ul>
+              {plan.electivesAvailable.map((course) => (
+                <li>
+                  {course.code} — {course.title}
+                  <form method="post" action="/api/taken">
+                    <input type="hidden" name="courseId" value={course.id} />
+                    <input type="hidden" name="back" value="/" />
+                    <button>Mark complete</button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+
+        {
+          plan.notYetAvailable.length > 0 && (
+            <>
+              <h2>Not yet available</h2>
+              <ul>
+                {plan.notYetAvailable.map((course) => (
+                  <li>{course.code} — {course.title} (prerequisite not yet met, or not offered this semester)</li>
+                ))}
+              </ul>
+            </>
+          )
+        }
+      </section>
+
+      <section aria-label="completed courses">
+        <h2>Completed so far</h2>
+        {
+          takenCourses.length === 0 ? (
+            <p>Nothing completed yet.</p>
+          ) : (
+            <ul>
+              {takenCourses.map((course) => (
+                <li>{course.code} — {course.title}</li>
+              ))}
+            </ul>
+          )
+        }
+      </section>
     </main>
-    <script>
-      // The live half of the demo: subscribe to the SSE stream and prepend
-      // messages as they arrive. The form itself needs none of this — its
-      // POST + redirect re-renders the submitting tab from SQLite; this
-      // stream is how every other tab finds out.
-      const list = document.querySelector("#messages");
-      const source = new EventSource("/api/events");
-      source.addEventListener("message", (event) => {
-        const message = JSON.parse(event.data);
-        const item = document.createElement("li");
-        item.textContent = message.body;
-        list?.prepend(item);
-      });
-    </script>
   </body>
 </html>
