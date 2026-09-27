@@ -101,7 +101,8 @@ export function advanceToNextSemester() {
 export interface RequirementRow {
   specialisationId: number | null;
   courseId: number;
-  category: "core" | "required" | "elective";
+  category: "core" | "required" | "choice" | "elective" | "computing_elective" | "university_elective";
+  choiceGroup: string | null;
 }
 
 export function listRequirements(specialisationId: number): RequirementRow[] {
@@ -110,6 +111,7 @@ export function listRequirements(specialisationId: number): RequirementRow[] {
       specialisationId: requirements.specialisationId,
       courseId: requirements.courseId,
       category: requirements.category,
+      choiceGroup: requirements.choiceGroup,
     })
     .from(requirements)
     .where(or(isNull(requirements.specialisationId), eq(requirements.specialisationId, specialisationId)))

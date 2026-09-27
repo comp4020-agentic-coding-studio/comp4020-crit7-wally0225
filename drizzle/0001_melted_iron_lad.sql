@@ -1,0 +1,1 @@
+ALTER TABLE `requirements` ADD `choice_group` text;

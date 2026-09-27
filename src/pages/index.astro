@@ -21,16 +21,17 @@ const takenCourseIds = listTakenCourseIds();
 const courses = listCourses();
 const courseById = new Map(courses.map((c) => [c.id, c]));
 
+const currentSpecialisation = specialisations.find((s) => s.id === specialisationId);
+
 const plan = planFor({
   specialisationId,
+  specialisationElectiveUnitsRequired: currentSpecialisation?.electiveUnitsRequired ?? 0,
   takenCourseIds,
   offeredCourseIds: listOfferedCourseIds(semester.id),
   requirements: listRequirements(specialisationId),
   prerequisites: listPrerequisites(),
   courses,
 });
-
-const currentSpecialisation = specialisations.find((s) => s.id === specialisationId);
 const takenCourses = takenCourseIds
   .map((id) => courseById.get(id))
   .filter((c): c is NonNullable<typeof c> => c !== undefined);
@@ -103,26 +104,6 @@ const nextSemester = semesters[semesters.findIndex((s) => s.id === semester.id) 
           )
         }
 
-        <h2>Electives available</h2>
-        {
-          plan.electivesAvailable.length === 0 ? (
-            <p>No electives available this semester.</p>
-          ) : (
-            <ul>
-              {plan.electivesAvailable.map((course) => (
-                <li>
-                  {course.code} — {course.title}
-                  <form method="post" action="/api/taken">
-                    <input type="hidden" name="courseId" value={course.id} />
-                    <input type="hidden" name="back" value="/" />
-                    <button>Mark complete</button>
-                  </form>
-                </li>
-              ))}
-            </ul>
-          )
-        }
-
         {
           plan.notYetAvailable.length > 0 && (
             <>
@@ -136,6 +117,45 @@ const nextSemester = semesters[semesters.findIndex((s) => s.id === semester.id) 
           )
         }
       </section>
+
+      {
+        plan.electivePools.map((pool) => (
+          <section aria-label={pool.label}>
+            <h2>{pool.label}</h2>
+            <p>{pool.unitsDone} / {pool.unitsRequired} units</p>
+            {
+              pool.available.length === 0 ? (
+                <p>Nothing from this list is available to take right now.</p>
+              ) : (
+                <ul>
+                  {pool.available.map((course) => (
+                    <li>
+                      {course.code} — {course.title}
+                      <form method="post" action="/api/taken">
+                        <input type="hidden" name="courseId" value={course.id} />
+                        <input type="hidden" name="back" value="/" />
+                        <button>Mark complete</button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              )
+            }
+            {
+              pool.notYetAvailable.length > 0 && (
+                <details>
+                  <summary>Not yet available ({pool.notYetAvailable.length})</summary>
+                  <ul>
+                    {pool.notYetAvailable.map((course) => (
+                      <li>{course.code} — {course.title}</li>
+                    ))}
+                  </ul>
+                </details>
+              )
+            }
+          </section>
+        ))
+      }
 
       <section aria-label="completed courses">
         <h2>Completed so far</h2>

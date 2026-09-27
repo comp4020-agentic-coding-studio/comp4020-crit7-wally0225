@@ -58,14 +58,28 @@ export const offerings = sqliteTable(
   (table) => [primaryKey({ columns: [table.courseId, table.semesterId] })],
 );
 
-// specialisationId null means "core, every Master of Computing student".
+// specialisationId null means "degree-wide, every Master of Computing
+// student" rather than tied to one specialisation.
+//
+// category:
+//  - core: individually mandatory, degree-wide (e.g. COMP6710)
+//  - required: individually mandatory, specific to one specialisation
+//  - choice: mandatory, but satisfied by ANY ONE course sharing the same
+//    choiceGroup (e.g. the MATH6005-or-COMP6260 foundational requirement)
+//  - elective: pick courses from this specialisation's own list up to its
+//    `specialisations.electiveUnitsRequired`
+//  - computing_elective / university_elective: degree-wide pools (any
+//    specialisation), up to the fixed thresholds in src/lib/recommend.ts
 export const requirements = sqliteTable("requirements", {
   id: int().primaryKey({ autoIncrement: true }),
   specialisationId: int("specialisation_id").references(() => specialisations.id),
   courseId: int("course_id")
     .notNull()
     .references(() => courses.id),
-  category: text({ enum: ["core", "required", "elective"] }).notNull(),
+  category: text({
+    enum: ["core", "required", "choice", "elective", "computing_elective", "university_elective"],
+  }).notNull(),
+  choiceGroup: text("choice_group"),
 });
 
 // The student's actual completed courses. Accumulates across semesters and

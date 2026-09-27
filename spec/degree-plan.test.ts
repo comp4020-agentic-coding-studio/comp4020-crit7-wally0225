@@ -1,9 +1,9 @@
 import { describe, expect, inject, it } from "vitest";
 
 // Drives the running app over HTTP against the seeded data in src/lib/seed.ts
-// (COMP4300 is the first seeded course — a core unit offered every semester;
-// specialisation 1 is Machine Learning, seeded as the student's starting
-// choice; specialisation 2 is Data Science). Follows the same pattern as the
+// (COMP6710 is the first seeded course — a core unit offered every semester;
+// specialisation 6 is Machine Learning, seeded as the student's starting
+// choice; specialisation 4 is Data Science). Follows the same pattern as the
 // starter's own spec/guestbook.test.ts: same-origin `origin` header on POSTs,
 // manual redirects.
 const baseUrl = inject("baseUrl");
@@ -27,10 +27,10 @@ describe("degree plan: persists across reload", () => {
     expect(res.status).toBe(303);
 
     const first = await getDashboard();
-    expect(first).toContain("COMP4300");
+    expect(first).toContain("COMP6710");
 
     const second = await getDashboard();
-    expect(second).toContain("COMP4300");
+    expect(second).toContain("COMP6710");
   });
 });
 
@@ -39,15 +39,15 @@ describe("degree plan: switching specialisation is real, not cosmetic", () => {
     const before = await getDashboard();
     expect(before).toContain("Machine Learning");
 
-    const res = await post("/api/specialisation", new URLSearchParams({ specialisationId: "2" }));
+    const res = await post("/api/specialisation", new URLSearchParams({ specialisationId: "4" }));
     expect(res.status).toBe(303);
 
     const after = await getDashboard();
     expect(after).toContain("Data Science");
-    expect(after).toContain("Principles of Data Science");
+    expect(after).toContain("Relational Databases");
 
     const reloaded = await getDashboard();
     expect(reloaded).toContain("Data Science");
-    expect(reloaded).toContain("Principles of Data Science");
+    expect(reloaded).toContain("Relational Databases");
   });
 });
