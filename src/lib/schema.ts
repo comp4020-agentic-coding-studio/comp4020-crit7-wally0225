@@ -23,6 +23,9 @@ export const courses = sqliteTable("courses", {
 });
 
 // A course requires another course, self-referential on courses.id.
+// requisiteGroup mirrors requirements.choiceGroup: rows sharing the same
+// non-null group mean "any ONE satisfies"; a null group means individually
+// mandatory (AND'd with every other row for that course).
 export const prerequisites = sqliteTable(
   "prerequisites",
   {
@@ -32,9 +35,24 @@ export const prerequisites = sqliteTable(
     requiresCourseId: int("requires_course_id")
       .notNull()
       .references(() => courses.id),
+    requisiteGroup: text("requisite_group"),
   },
   (table) => [primaryKey({ columns: [table.courseId, table.requiresCourseId] })],
 );
+
+// A course can't be taken if the student has already completed another. Real
+// ANU incompatibilities are mostly with undergraduate-equivalent courses this
+// planner doesn't model at all: incompatibleCourseId is set only when that
+// other course is also seeded (so it can actually block); incompatibleCourseCode
+// is always the real ANU code, so it can still be shown even when null.
+export const incompatibilities = sqliteTable("incompatibilities", {
+  id: int().primaryKey({ autoIncrement: true }),
+  courseId: int("course_id")
+    .notNull()
+    .references(() => courses.id),
+  incompatibleCourseId: int("incompatible_course_id").references(() => courses.id),
+  incompatibleCourseCode: text("incompatible_course_code").notNull(),
+});
 
 export const semesters = sqliteTable("semesters", {
   id: int().primaryKey({ autoIncrement: true }),

@@ -1,18 +1,260 @@
+:root {
+  --anu-black: #000000;
+  --anu-ink: #1a1a1a;
+  --anu-gold: #be830e;
+  --anu-gold-tint: #f5edde;
+  --anu-line: #d5d0c8;
+  --anu-link: #0a2f5c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  padding: 2rem;
-  font-family: system-ui, sans-serif;
-  line-height: 1.6;
-  color: #1a1a1a;
+  font-family:
+    -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.55;
+  color: var(--anu-ink);
+  background: #fff;
+}
+
+/* Header: black institutional bar, gold rule underneath — ANU's own
+   restrained palette (gold used as an accent, never a background). */
+.site-header {
+  background: var(--anu-black);
+  color: #fff;
+  border-bottom: 4px solid var(--anu-gold);
+  padding: 0.9rem 1.5rem 0.7rem;
+}
+
+.site-header__crest {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.site-header__system {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  color: var(--anu-gold-tint);
+}
+
+/* Breadcrumb strip, in the style of programsandcourses.anu.edu.au. */
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.5rem 1.5rem;
+  background: #fafafa;
+  border-bottom: 1px solid var(--anu-line);
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.site-nav a {
+  color: #555;
+  text-decoration: none;
+}
+
+.site-nav a:hover {
+  text-decoration: underline;
+}
+
+.site-nav [aria-current="page"] {
+  color: var(--anu-ink);
+  font-weight: 600;
+}
+
+/* Section tabs, echoing the in-page anchor tabs on the real program page. */
+.site-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  padding: 0 1.5rem;
+  border-bottom: 1px solid var(--anu-line);
+}
+
+.site-tabs a {
+  display: inline-block;
+  padding: 0.75rem 0;
+  color: var(--anu-ink);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  font-size: 0.95rem;
+}
+
+.site-tabs a:hover {
+  color: var(--anu-link);
+}
+
+.site-tabs a[aria-current="page"] {
+  border-bottom-color: var(--anu-gold);
+  font-weight: 700;
 }
 
 main {
-  max-width: 40rem;
+  max-width: 52rem;
   margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+main h1 {
+  font-size: 1.9rem;
+  margin: 0 0 0.3rem;
+}
+
+main h2 {
+  font-size: 1.15rem;
+  margin: 2rem 0 0.75rem;
+  padding-left: 0.65rem;
+  border-left: 4px solid var(--anu-gold);
 }
 
 a {
-  color: #0b5fff;
+  color: var(--anu-link);
+}
+
+/* "Quick facts" style panel, echoing the boxed sidebar on the real program
+   page (length, units, CRICOS code). */
+.quick-facts {
+  background: var(--anu-gold-tint);
+  border: 1px solid var(--anu-line);
+  border-radius: 2px;
+  padding: 1rem 1.25rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.quick-facts p {
+  margin: 0.2rem 0;
+}
+
+.quick-facts__progress {
+  height: 0.5rem;
+  background: #e6ddca;
+  border-radius: 1rem;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.quick-facts__progress span {
+  display: block;
+  height: 100%;
+  background: var(--anu-gold);
+}
+
+section {
+  margin-bottom: 1.5rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+th {
+  text-align: left;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #555;
+  border-bottom: 2px solid var(--anu-ink);
+  padding: 0.5rem 0.6rem;
+}
+
+td {
+  border-bottom: 1px solid var(--anu-line);
+  padding: 0.55rem 0.6rem;
+  vertical-align: middle;
+}
+
+ul.course-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+ul.course-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--anu-line);
+}
+
+ul.course-list li:last-child {
+  border-bottom: none;
+}
+
+.course-list__code {
+  color: var(--anu-link);
+  font-weight: 600;
+  margin-right: 0.4rem;
+}
+
+.blocking-reasons {
+  font-size: 0.85rem;
+  color: #a83232;
+}
+
+.requisite-info {
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.requisite-info summary {
+  font-size: 0.85rem;
+}
+
+.requisite-info dt {
+  font-weight: 600;
+  margin-top: 0.4rem;
+}
+
+.requisite-info dd {
+  margin: 0.1rem 0 0;
+}
+
+.requisite-info .informational {
+  color: #777;
+  font-style: italic;
+}
+
+.btn-toggle {
+  width: 12.5rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.btn-toggle--done {
+  background: #c62828;
+  border-color: #c62828;
+}
+
+.btn-toggle--done:hover {
+  background: #a62222;
+}
+
+.btn-toggle--pending {
+  background: #2e7d32;
+  border-color: #2e7d32;
+}
+
+.btn-toggle--pending:hover {
+  background: #256428;
+}
+
+details summary {
+  cursor: pointer;
+  color: #555;
+  font-size: 0.9rem;
 }
 
 form {
@@ -20,21 +262,59 @@ form {
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
-  margin-block: 1.5rem;
+  margin: 0;
 }
 
+label {
+  font-size: 0.9rem;
+  color: #333;
+}
+
+select,
 input {
-  flex: 1;
-  min-width: 12rem;
-  padding: 0.4rem 0.6rem;
   font: inherit;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #999;
+  border-radius: 2px;
 }
 
 button {
-  padding: 0.4rem 1rem;
+  padding: 0.45rem 1.1rem;
   font: inherit;
+  font-weight: 600;
+  background: var(--anu-black);
+  color: #fff;
+  border: 1px solid var(--anu-black);
+  border-radius: 2px;
+  cursor: pointer;
 }
 
-#messages {
-  padding-inline-start: 1.2rem;
+button:hover {
+  background: #2a2a2a;
+}
+
+.status-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.status-form button {
+  background: var(--anu-gold);
+  border-color: var(--anu-gold);
+  color: var(--anu-black);
+}
+
+.status-form button:hover {
+  background: #a5730a;
+}
+
+.site-footer {
+  border-top: 1px solid var(--anu-line);
+  padding: 1.25rem 1.5rem 2rem;
+  font-size: 0.8rem;
+  color: #666;
+  text-align: center;
 }

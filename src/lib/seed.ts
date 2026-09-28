@@ -1,6 +1,7 @@
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import {
   courses,
+  incompatibilities,
   offerings,
   prerequisites,
   requirements,
@@ -29,9 +30,19 @@ import {
 // program (any ANU course), so it's modelled as two generic placeholder
 // slots rather than fabricated specific course codes.
 //
-// Prerequisite chains are illustrative modelling (a plausible few, not
-// scraped from each course's own page) so the "not yet available" bucket has
-// something to show.
+// Prerequisites and incompatibilities are real, taken from each course's own
+// "Requisite and Incompatibility" section (programsandcourses.anu.edu.au/2025/
+// course/<code>) in September 2026. Most real incompatibilities, and several
+// real prerequisites, name an undergraduate-equivalent course (COMP1xxx–4xxx)
+// that isn't and never will be part of this 54-course Master of Computing
+// seed — a rule keyed on a course nobody here can ever mark "taken" would
+// permanently and wrongly block the seeded course, so those branches are
+// dropped from the live prerequisites/incompatibilities below. Where a real
+// OR-alternative has exactly one seeded branch, that branch becomes the
+// (sole) requirement. Incompatibilities whose other course isn't seeded are
+// still recorded (incompatibleCourseId left null) purely for display on the
+// course catalogue — they never block anything, since they can never
+// trigger against courses this planner can track.
 export function seedIfEmpty(db: BetterSQLite3Database) {
   const already = db.select().from(courses).limit(1).all();
   if (already.length > 0) return;
@@ -135,10 +146,131 @@ export function seedIfEmpty(db: BetterSQLite3Database) {
 
     tx.insert(prerequisites)
       .values([
+        // Individually-mandatory (AND) prerequisites — the real rule's only
+        // branch that's also a seeded course.
+        { courseId: courseId.COMP6320, requiresCourseId: courseId.COMP6710 },
+        { courseId: courseId.COMP6320, requiresCourseId: courseId.COMP6262 },
         { courseId: courseId.COMP8620, requiresCourseId: courseId.COMP6320 },
-        { courseId: courseId.COMP8650, requiresCourseId: courseId.COMP8600 },
+        { courseId: courseId.COMP8691, requiresCourseId: courseId.COMP6320 },
+        { courseId: courseId.COMP6361, requiresCourseId: courseId.COMP6710 },
+        { courseId: courseId.COMP6361, requiresCourseId: courseId.COMP6260 },
+        { courseId: courseId.COMP8715, requiresCourseId: courseId.COMP6442 },
+        { courseId: courseId.COMP8715, requiresCourseId: courseId.COMP8260 },
+        { courseId: courseId.COMP8830, requiresCourseId: courseId.COMP8260 },
+        { courseId: courseId.COMP8830, requiresCourseId: courseId.COMP6442 },
+        { courseId: courseId.COMP8460, requiresCourseId: courseId.COMP6466 },
+        { courseId: courseId.COMP6466, requiresCourseId: courseId.COMP6710 },
+        { courseId: courseId.COMP8712, requiresCourseId: courseId.COMP6710 },
+        { courseId: courseId.COMP8712, requiresCourseId: courseId.COMP6442 },
+        { courseId: courseId.COMP8712, requiresCourseId: courseId.COMP6310 },
+        { courseId: courseId.COMP6310, requiresCourseId: courseId.COMP6710 },
+        { courseId: courseId.COMP6464, requiresCourseId: courseId.COMP6710 },
+        { courseId: courseId.COMP8410, requiresCourseId: courseId.COMP6240 },
+        { courseId: courseId.COMP8410, requiresCourseId: courseId.COMP6710 },
         { courseId: courseId.COMP8430, requiresCourseId: courseId.COMP6240 },
-        { courseId: courseId.COMP8045, requiresCourseId: courseId.COMP8300 },
+        { courseId: courseId.COMP8430, requiresCourseId: courseId.COMP6710 },
+
+        // OR-groups: any ONE course sharing a requisiteGroup satisfies it.
+        // COMP6442 (core): COMP6710, AND one of MATH6005/COMP6260 — the same
+        // pair as the foundational choice group above.
+        { courseId: courseId.COMP6442, requiresCourseId: courseId.COMP6710 },
+        {
+          courseId: courseId.COMP6442,
+          requiresCourseId: courseId.MATH6005,
+          requisiteGroup: "COMP6442-foundational",
+        },
+        {
+          courseId: courseId.COMP6442,
+          requiresCourseId: courseId.COMP6260,
+          requisiteGroup: "COMP6442-foundational",
+        },
+        // COMP6331: one of COMP6710 / COMP6310 / COMP6442.
+        { courseId: courseId.COMP6331, requiresCourseId: courseId.COMP6710, requisiteGroup: "COMP6331-any" },
+        { courseId: courseId.COMP6331, requiresCourseId: courseId.COMP6310, requisiteGroup: "COMP6331-any" },
+        { courseId: courseId.COMP6331, requiresCourseId: courseId.COMP6442, requisiteGroup: "COMP6331-any" },
+        // COMP6490: COMP6710, AND one of COMP6240 / COMP6260 / COMP6442.
+        { courseId: courseId.COMP6490, requiresCourseId: courseId.COMP6710 },
+        { courseId: courseId.COMP6490, requiresCourseId: courseId.COMP6240, requisiteGroup: "COMP6490-domain" },
+        { courseId: courseId.COMP6490, requiresCourseId: courseId.COMP6260, requisiteGroup: "COMP6490-domain" },
+        { courseId: courseId.COMP6490, requiresCourseId: courseId.COMP6442, requisiteGroup: "COMP6490-domain" },
+        // COMP8300: one of COMP6310 / COMP6330 / COMP6331 / COMP6464 (the
+        // real rule's fifth branch, ENGN6539, isn't seeded).
+        { courseId: courseId.COMP8300, requiresCourseId: courseId.COMP6310, requisiteGroup: "COMP8300-any" },
+        { courseId: courseId.COMP8300, requiresCourseId: courseId.COMP6330, requisiteGroup: "COMP8300-any" },
+        { courseId: courseId.COMP8300, requiresCourseId: courseId.COMP6331, requisiteGroup: "COMP8300-any" },
+        { courseId: courseId.COMP8300, requiresCourseId: courseId.COMP6464, requisiteGroup: "COMP8300-any" },
+        // COMP8650: one of COMP6670 / COMP8600.
+        { courseId: courseId.COMP8650, requiresCourseId: courseId.COMP6670, requisiteGroup: "COMP8650-any" },
+        { courseId: courseId.COMP8650, requiresCourseId: courseId.COMP8600, requisiteGroup: "COMP8650-any" },
+
+        // Not modelled: COMP6330's real prerequisite (COMP6300, COMP2300, or
+        // ENGN2219) has no branch in this seed, so it's left gate-free rather
+        // than blocked on an unmodelled course. COMP8045's real requirement
+        // is a generic "12 units of 6000-level COMP courses", not a specific
+        // code, so it has no prerequisite row at all.
+      ])
+      .run();
+
+    // Incompatibilities: "not able to enrol if you've already completed X".
+    // Only COMP8715/COMP8830 (the capstone alternatives) are both seeded —
+    // already mutually exclusive via the choiceGroup below, this just makes
+    // the rule explicit and displayable. Every other row here is real but
+    // references an undergraduate-equivalent (or other-program) course this
+    // planner doesn't model, so incompatibleCourseId is left null: shown on
+    // the course catalogue, never used to block.
+    tx.insert(incompatibilities)
+      .values([
+        { courseId: courseId.COMP8715, incompatibleCourseId: courseId.COMP8830, incompatibleCourseCode: "COMP8830" },
+        { courseId: courseId.COMP8830, incompatibleCourseId: courseId.COMP8715, incompatibleCourseCode: "COMP8715" },
+
+        { courseId: courseId.COMP6710, incompatibleCourseCode: "COMP1110" },
+        { courseId: courseId.COMP6710, incompatibleCourseCode: "COMP1140" },
+        { courseId: courseId.COMP6442, incompatibleCourseCode: "COMP2100" },
+        { courseId: courseId.COMP6260, incompatibleCourseCode: "COMP1600" },
+        { courseId: courseId.COMP6262, incompatibleCourseCode: "PHIL2080" },
+        { courseId: courseId.COMP6262, incompatibleCourseCode: "COMP2620" },
+        { courseId: courseId.COMP6320, incompatibleCourseCode: "COMP3620" },
+        { courseId: courseId.COMP8620, incompatibleCourseCode: "COMP4620" },
+        { courseId: courseId.COMP8691, incompatibleCourseCode: "COMP4690" },
+        { courseId: courseId.COMP6363, incompatibleCourseCode: "COMP3630" },
+        { courseId: courseId.COMP8460, incompatibleCourseCode: "COMP4600" },
+        { courseId: courseId.COMP6261, incompatibleCourseCode: "COMP2610" },
+        { courseId: courseId.COMP6261, incompatibleCourseCode: "ENGN8534" },
+        { courseId: courseId.COMP6466, incompatibleCourseCode: "COMP3600" },
+        { courseId: courseId.COMP8712, incompatibleCourseCode: "COMP3710" },
+        { courseId: courseId.COMP8712, incompatibleCourseCode: "COMP6470" },
+        { courseId: courseId.COMP8300, incompatibleCourseCode: "COMP4300" },
+        { courseId: courseId.COMP6310, incompatibleCourseCode: "COMP2310" },
+        { courseId: courseId.COMP6330, incompatibleCourseCode: "COMP3300" },
+        { courseId: courseId.COMP6331, incompatibleCourseCode: "COMP3310" },
+        { courseId: courseId.COMP6331, incompatibleCourseCode: "ENGN3539" },
+        { courseId: courseId.COMP6331, incompatibleCourseCode: "ENGN6539" },
+        { courseId: courseId.COMP6464, incompatibleCourseCode: "COMP3320" },
+        { courseId: courseId.COMP6240, incompatibleCourseCode: "COMP2400" },
+        { courseId: courseId.COMP6240, incompatibleCourseCode: "COMP7240" },
+        { courseId: courseId.COMP8410, incompatibleCourseCode: "COMP3420" },
+        { courseId: courseId.COMP8410, incompatibleCourseCode: "COMP3425" },
+        { courseId: courseId.COMP8410, incompatibleCourseCode: "COMP8400" },
+        { courseId: courseId.COMP8410, incompatibleCourseCode: "COMP8910" },
+        { courseId: courseId.COMP8430, incompatibleCourseCode: "COMP3430" },
+        { courseId: courseId.COMP6490, incompatibleCourseCode: "COMP4650" },
+        { courseId: courseId.COMP6490, incompatibleCourseCode: "COMP6990" },
+        { courseId: courseId.COMP6670, incompatibleCourseCode: "COMP3670" },
+        { courseId: courseId.COMP8600, incompatibleCourseCode: "COMP4670" },
+        { courseId: courseId.COMP8600, incompatibleCourseCode: "COMP8960" },
+        { courseId: courseId.COMP8880, incompatibleCourseCode: "COMP4880" },
+        { courseId: courseId.COMP8880, incompatibleCourseCode: "COMP8980" },
+        { courseId: courseId.COMP6390, incompatibleCourseCode: "COMP3900" },
+        { courseId: courseId.COMP8350, incompatibleCourseCode: "COMP4350" },
+        { courseId: courseId.COMP8539, incompatibleCourseCode: "ENGN8501" },
+        { courseId: courseId.COMP8610, incompatibleCourseCode: "COMP4610" },
+        { courseId: courseId.COMP8610, incompatibleCourseCode: "COMP6461" },
+        { courseId: courseId.COMP6528, incompatibleCourseCode: "ENGN6528" },
+        { courseId: courseId.COMP6528, incompatibleCourseCode: "COMP4528" },
+        { courseId: courseId.COMP6528, incompatibleCourseCode: "ENGN4528" },
+        { courseId: courseId.COMP6720, incompatibleCourseCode: "COMP1720" },
+        { courseId: courseId.COMP6780, incompatibleCourseCode: "COMP1710" },
+        { courseId: courseId.COMP6120, incompatibleCourseCode: "COMP2120" },
       ])
       .run();
 

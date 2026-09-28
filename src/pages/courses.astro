@@ -1,64 +1,107 @@
 ---
-import { listCourses, listTakenCourseIds } from "../lib/db";
-import "../styles.css";
+import { listCourses, listIncompatibilities, listPrerequisites, listTakenCourseIds } from "../lib/db";
+import Layout from "../layouts/Layout.astro";
 
 const courses = listCourses();
 const takenCourseIds = new Set(listTakenCourseIds());
+const prerequisites = listPrerequisites();
+const incompatibilities = listIncompatibilities();
+const codeById = new Map(courses.map((c) => [c.id, c.code]));
+
+// One "Requisite and Incompatibility" line per course, mirroring the section
+// of the same name on the course's own ANU page: mandatory prerequisites are
+// AND'd, an OR-group renders as "one of: A, B"; incompatibilities without an
+// incompatibleCourseId are real but reference a course outside this planner,
+// so they're labelled as informational rather than live-blocking.
+function requisiteLines(courseId: number) {
+  const mandatory: string[] = [];
+  const groups = new Map<string, string[]>();
+  for (const p of prerequisites) {
+    if (p.courseId !== courseId) continue;
+    const code = codeById.get(p.requiresCourseId) ?? `#${p.requiresCourseId}`;
+    if (p.requisiteGroup === null) mandatory.push(code);
+    else groups.set(p.requisiteGroup, [...(groups.get(p.requisiteGroup) ?? []), code]);
+  }
+  const clauses = [...mandatory, ...[...groups.values()].map((codes) => `one of: ${codes.join(", ")}`)];
+
+  const incompatible = incompatibilities
+    .filter((i) => i.courseId === courseId)
+    .map((i) => ({ code: i.incompatibleCourseCode, inModel: i.incompatibleCourseId !== null }));
+
+  return { clauses, incompatible };
+}
 ---
 
-<!doctype html>
-<html lang="en-AU">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Degree planner — course catalogue</title>
-  </head>
-  <body>
-    <nav aria-label="site">
-      <a href="/">Dashboard</a>
-      <a href="/courses/">Courses</a>
-      <a href="/readme/">About</a>
-    </nav>
-    <main>
-      <h1>Course catalogue</h1>
-      <p>
-        Every course in the Master of Computing, for entering history from
-        outside the current semester's recommendations — for example a course
-        completed in a previous degree, or before you started using this
-        planner.
-      </p>
-      <table>
-        <thead>
-          <tr>
-            <th scope="col">Code</th>
-            <th scope="col">Title</th>
-            <th scope="col">Units</th>
-            <th scope="col">Completed</th>
-          </tr>
-        </thead>
-        <tbody>
-          {
-            courses.map((course) => {
-              const taken = takenCourseIds.has(course.id);
-              return (
-                <tr>
-                  <td>{course.code}</td>
-                  <td>{course.title}</td>
-                  <td>{course.units}</td>
-                  <td>
-                    <form method="post" action="/api/taken">
-                      <input type="hidden" name="courseId" value={course.id} />
-                      <input type="hidden" name="back" value="/courses/" />
-                      <input type="hidden" name="action" value={taken ? "remove" : "add"} />
-                      <button>{taken ? "Mark not completed" : "Mark completed"}</button>
-                    </form>
-                  </td>
-                </tr>
-              );
-            })
-          }
-        </tbody>
-      </table>
-    </main>
-  </body>
-</html>
+<Layout title="Degree planner — course catalogue" active="courses">
+  <h1>Course catalogue</h1>
+  <p>
+    Every course in the Master of Computing, for entering history from outside the current semester's
+    recommendations — for example a course completed in a previous degree, or before you started using this planner.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Code</th>
+        <th scope="col">Title</th>
+        <th scope="col">Units</th>
+        <th scope="col">Requisite and Incompatibility</th>
+        <th scope="col">Completed</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        courses.map((course) => {
+          const taken = takenCourseIds.has(course.id);
+          const { clauses, incompatible } = requisiteLines(course.id);
+          return (
+            <tr>
+              <td>{course.code}</td>
+              <td>{course.title}</td>
+              <td>{course.units}</td>
+              <td>
+                {clauses.length === 0 && incompatible.length === 0 ? (
+                  <span class="requisite-info">None</span>
+                ) : (
+                  <details class="requisite-info">
+                    <summary>Details</summary>
+                    <dl>
+                      {clauses.length > 0 && (
+                        <>
+                          <dt>Requisite</dt>
+                          <dd>{clauses.join(" and ")}</dd>
+                        </>
+                      )}
+                      {incompatible.length > 0 && (
+                        <>
+                          <dt>Incompatibility</dt>
+                          {incompatible.map((i) => (
+                            <dd>
+                              {i.code}
+                              {!i.inModel && (
+                                <span class="informational"> (undergraduate equivalent — not tracked here)</span>
+                              )}
+                            </dd>
+                          ))}
+                        </>
+                      )}
+                    </dl>
+                  </details>
+                )}
+              </td>
+              <td>
+                <form method="post" action="/api/taken">
+                  <input type="hidden" name="courseId" value={course.id} />
+                  <input type="hidden" name="back" value="/courses/" />
+                  <input type="hidden" name="action" value={taken ? "remove" : "add"} />
+                  <button class={`btn-toggle ${taken ? "btn-toggle--done" : "btn-toggle--pending"}`}>
+                    {taken ? "Mark not completed" : "Mark completed"}
+                  </button>
+                </form>
+              </td>
+            </tr>
+          );
+        })
+      }
+    </tbody>
+  </table>
+</Layout>

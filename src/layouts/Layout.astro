@@ -1,0 +1,63 @@
+---
+import { ClientRouter } from "astro:transitions";
+import "../styles.css";
+
+interface Props {
+  title: string;
+  active: "dashboard" | "courses" | "about";
+}
+
+const { title, active } = Astro.props;
+
+const navItems = [
+  { href: "/", label: "Dashboard", key: "dashboard" as const },
+  { href: "/courses/", label: "Course catalogue", key: "courses" as const },
+  { href: "/readme/", label: "About this planner", key: "about" as const },
+];
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <ClientRouter />
+  </head>
+  <body>
+    <header class="site-header" transition:persist transition:name="site-header">
+      <p class="site-header__crest">The Australian National University</p>
+      <p class="site-header__system">Programs &amp; Courses — Degree Planner</p>
+    </header>
+
+    <nav aria-label="site" class="site-nav">
+      <a href="/">Home</a>
+      <span aria-hidden="true">›</span>
+      <a href="/">Programs</a>
+      <span aria-hidden="true">›</span>
+      <span aria-current={active === "dashboard" ? "page" : undefined}>Master of Computing (7706XMCOMP)</span>
+    </nav>
+
+    <nav aria-label="sections" class="site-tabs">
+      {
+        navItems.map((item) => (
+          <a href={item.href} aria-current={item.key === active ? "page" : undefined}>
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="site-footer" transition:persist transition:name="site-footer">
+      <p>
+        Master of Computing (7706XMCOMP) — an unofficial degree planner built for COMP4020 crit 7. Curriculum data
+        from <a href="https://programsandcourses.anu.edu.au/2025/program/7706XMCOMP">programsandcourses.anu.edu.au</a
+        >.
+      </p>
+    </footer>
+  </body>
+</html>

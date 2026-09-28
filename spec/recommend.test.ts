@@ -11,6 +11,7 @@ const courses: Course[] = [
   { id: 4, code: "DS1", title: "DS intro", units: 6 },
   { id: 5, code: "OPT_A", title: "Foundational option A", units: 6 },
   { id: 6, code: "OPT_B", title: "Foundational option B", units: 6 },
+  { id: 7, code: "ML3", title: "ML capstone", units: 6 },
 ];
 
 const requirements = [
@@ -20,29 +21,39 @@ const requirements = [
   { specialisationId: 20, courseId: 4, category: "required" as const, choiceGroup: null },
   { specialisationId: null, courseId: 5, category: "choice" as const, choiceGroup: "foundational" },
   { specialisationId: null, courseId: 6, category: "choice" as const, choiceGroup: "foundational" },
+  { specialisationId: 10, courseId: 7, category: "required" as const, choiceGroup: null },
 ];
 
-const prerequisites = [{ courseId: 3, requiresCourseId: 2 }];
+const prerequisites = [
+  { courseId: 3, requiresCourseId: 2, requisiteGroup: null },
+  { courseId: 7, requiresCourseId: 5, requisiteGroup: "ML3-any" },
+  { courseId: 7, requiresCourseId: 6, requisiteGroup: "ML3-any" },
+];
+
+const incompatibilities = [{ courseId: 3, incompatibleCourseId: 4, incompatibleCourseCode: "DS1" }];
 
 const basePlanFor = (overrides: Partial<Parameters<typeof planFor>[0]>) =>
   planFor({
     specialisationId: 10,
     specialisationElectiveUnitsRequired: 0,
     takenCourseIds: [],
-    offeredCourseIds: [1, 2, 3, 4, 5, 6],
+    offeredCourseIds: [1, 2, 3, 4, 5, 6, 7],
     requirements,
     prerequisites,
+    incompatibilities,
     courses,
     ...overrides,
   });
 
 describe("planFor", () => {
-  it("puts a course whose prerequisite isn't met into notYetAvailable", () => {
+  it("puts a course whose prerequisite isn't met into notYetAvailable, with a reason", () => {
     const plan = basePlanFor({});
 
     expect(plan.takeThisSemester.map((c) => c.code)).toContain("ML1");
-    expect(plan.notYetAvailable.map((c) => c.code)).toContain("ML2");
+    expect(plan.notYetAvailable.map(({ course }) => course.code)).toContain("ML2");
     expect(plan.takeThisSemester.map((c) => c.code)).not.toContain("ML2");
+    const ml2 = plan.notYetAvailable.find(({ course }) => course.code === "ML2");
+    expect(ml2?.reasons).toContain("Requires ML1");
   });
 
   it("moves the blocked course to takeThisSemester once its prerequisite is taken", () => {
@@ -53,8 +64,8 @@ describe("planFor", () => {
 
   it("changes which mandatory courses appear when the specialisation changes, taken courses held constant", () => {
     const takenCourseIds = [1];
-    const mlPlan = basePlanFor({ takenCourseIds, offeredCourseIds: [1, 2, 3, 4, 5, 6] });
-    const dsPlan = basePlanFor({ specialisationId: 20, takenCourseIds, offeredCourseIds: [1, 2, 3, 4, 5, 6] });
+    const mlPlan = basePlanFor({ takenCourseIds });
+    const dsPlan = basePlanFor({ specialisationId: 20, takenCourseIds });
 
     expect(mlPlan.takeThisSemester.map((c) => c.code)).toContain("ML1");
     expect(dsPlan.takeThisSemester.map((c) => c.code)).not.toContain("ML1");
@@ -70,5 +81,21 @@ describe("planFor", () => {
     const tookA = basePlanFor({ takenCourseIds: [5] });
     expect(tookA.takeThisSemester.map((c) => c.code)).not.toContain("OPT_B");
     expect(tookA.unitsDone).toBeGreaterThanOrEqual(6);
+  });
+
+  it("an OR-group prerequisite is satisfied by any one alternative, with a combined reason otherwise", () => {
+    const neitherOption = basePlanFor({});
+    const blocked = neitherOption.notYetAvailable.find(({ course }) => course.code === "ML3");
+    expect(blocked?.reasons).toContain("Requires one of: OPT_A, OPT_B");
+
+    const tookOptionB = basePlanFor({ takenCourseIds: [6] });
+    expect(tookOptionB.takeThisSemester.map((c) => c.code)).toContain("ML3");
+  });
+
+  it("blocks a course on a triggered incompatibility, even once its prerequisite is met", () => {
+    const plan = basePlanFor({ takenCourseIds: [2, 4] });
+
+    const blocked = plan.notYetAvailable.find(({ course }) => course.code === "ML2");
+    expect(blocked?.reasons).toContain("Not compatible with DS1 (already completed)");
   });
 });

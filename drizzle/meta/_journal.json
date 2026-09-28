@@ -15,6 +15,13 @@
       "when": 1790515573770,
       "tag": "0001_melted_iron_lad",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790572286825,
+      "tag": "0002_spotty_wolfsbane",
+      "breakpoints": true
     }
   ]
 }

@@ -10,6 +10,7 @@ import {
   type Semester,
   type Specialisation,
   courses,
+  incompatibilities,
   offerings,
   prerequisites,
   requirements,
@@ -130,8 +131,26 @@ export function listOfferedCourseIds(semesterId: number): number[] {
 export interface PrerequisiteRow {
   courseId: number;
   requiresCourseId: number;
+  requisiteGroup: string | null;
 }
 
 export function listPrerequisites(): PrerequisiteRow[] {
   return db.select().from(prerequisites).all();
+}
+
+export interface IncompatibilityRow {
+  courseId: number;
+  incompatibleCourseId: number | null;
+  incompatibleCourseCode: string;
+}
+
+export function listIncompatibilities(): IncompatibilityRow[] {
+  return db
+    .select({
+      courseId: incompatibilities.courseId,
+      incompatibleCourseId: incompatibilities.incompatibleCourseId,
+      incompatibleCourseCode: incompatibilities.incompatibleCourseCode,
+    })
+    .from(incompatibilities)
+    .all();
 }
