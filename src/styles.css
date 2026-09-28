@@ -133,6 +133,29 @@ a {
   margin: 0.2rem 0;
 }
 
+.quick-facts__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.quick-facts__header form {
+  margin: 0;
+  flex: none;
+}
+
+.btn-restart {
+  background: transparent;
+  color: #a83232;
+  border-color: #a83232;
+}
+
+.btn-restart:hover {
+  background: #a83232;
+  color: #fff;
+}
+
 .quick-facts__progress {
   height: 0.5rem;
   background: #e6ddca;

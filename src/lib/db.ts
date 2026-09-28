@@ -93,6 +93,20 @@ export function listTakenCourseIdsInSemester(semesterId: number): number[] {
     .map((row) => row.courseId);
 }
 
+// Sum of units for courses marked complete in a given semester — the other
+// half of the semester budget alongside listTakenCourseIdsInSemester's
+// count, since a 12-unit capstone fills the same 24-unit load as two 6-unit
+// courses.
+export function unitsTakenInSemester(semesterId: number): number {
+  const rows = db
+    .select({ units: courses.units })
+    .from(takenCourses)
+    .innerJoin(courses, eq(takenCourses.courseId, courses.id))
+    .where(eq(takenCourses.semesterId, semesterId))
+    .all();
+  return rows.reduce((sum, row) => sum + row.units, 0);
+}
+
 // A prerequisite only counts once it was completed in an earlier semester
 // than the one being planned for — completing it this semester doesn't
 // guarantee a pass, so it can't unlock a course that requires it yet. Null
@@ -123,6 +137,19 @@ export function advanceToNextSemester() {
   db.transaction((tx) => {
     tx.update(semesters).set({ isCurrent: false }).where(eq(semesters.isCurrent, true)).run();
     tx.update(semesters).set({ isCurrent: true }).where(eq(semesters.id, next.id)).run();
+  });
+}
+
+// "Restart planning": clears every completed course and rewinds to the
+// first seeded semester. Specialisation is left as-is — that's a separate,
+// already-switchable preference, not part of the student's progress.
+export function resetPlan() {
+  const first = listSemesters()[0];
+  if (!first) return;
+  db.transaction((tx) => {
+    tx.delete(takenCourses).run();
+    tx.update(semesters).set({ isCurrent: false }).where(eq(semesters.isCurrent, true)).run();
+    tx.update(semesters).set({ isCurrent: true }).where(eq(semesters.id, first.id)).run();
   });
 }
 

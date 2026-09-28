@@ -7,9 +7,22 @@ interface Props {
   active: "dashboard" | "courses" | "about";
   takenThisSemesterCount?: number;
   maxCoursesPerSemester?: number;
+  takenUnitsThisSemester?: number;
+  maxUnitsPerSemester?: number;
+  degreeComplete?: boolean;
+  unitsRequired?: number;
 }
 
-const { title, active, takenThisSemesterCount = 0, maxCoursesPerSemester = 4 } = Astro.props;
+const {
+  title,
+  active,
+  takenThisSemesterCount = 0,
+  maxCoursesPerSemester = 4,
+  takenUnitsThisSemester = 0,
+  maxUnitsPerSemester = 24,
+  degreeComplete = false,
+  unitsRequired = 0,
+} = Astro.props;
 
 const navItems = [
   { href: "/", label: "Dashboard", key: "dashboard" as const },
@@ -26,7 +39,13 @@ const navItems = [
     <title>{title}</title>
     <ClientRouter />
   </head>
-  <body data-taken-this-semester={takenThisSemesterCount} data-max-courses-per-semester={maxCoursesPerSemester}>
+  <body
+    data-taken-this-semester={takenThisSemesterCount}
+    data-max-courses-per-semester={maxCoursesPerSemester}
+    data-taken-units-this-semester={takenUnitsThisSemester}
+    data-max-units-per-semester={maxUnitsPerSemester}
+    data-degree-complete={degreeComplete}
+  >
     <header class="site-header" transition:persist transition:name="site-header">
       <p class="site-header__crest">The Australian National University</p>
       <p class="site-header__system">Programs &amp; Courses — Degree Planner</p>
@@ -72,6 +91,15 @@ const navItems = [
       </form>
     </dialog>
 
+    <dialog id="congrats-dialog" class="warning-dialog">
+      <form method="dialog">
+        <p>Congratulations! You've completed all {unitsRequired} units required for the Master of Computing.</p>
+        <div class="warning-dialog__actions">
+          <button value="ok">Nice!</button>
+        </div>
+      </form>
+    </dialog>
+
     <script>
       // Real ANU administrative consequences of over/under-enrolling that
       // this planner doesn't process itself — a confirm-and-block gate on
@@ -80,58 +108,104 @@ const navItems = [
       // document (survives Astro's view-transition page swaps) and reads
       // the taken-count fresh from <body> on each submit, rather than
       // closing over a value that could go stale across transitions.
-      document.addEventListener("submit", (event) => {
-        const form = event.target;
-        if (!(form instanceof HTMLFormElement)) return;
+      //
+      // Registered on the CAPTURE phase, ahead of Astro's own ClientRouter
+      // submit listener (which runs in the bubble phase to soft-navigate
+      // the form): showModal() doesn't block JS like alert() did, so if
+      // Astro's listener ran first it would already be mid-fetch/morph by
+      // the time we called preventDefault() here — which is exactly what
+      // made the dialog flicker and vanish on its own. Catching the event
+      // in capture and calling stopImmediatePropagation() stops Astro's
+      // listener from ever seeing that first submit at all.
+      document.addEventListener(
+        "submit",
+        (event) => {
+          const form = event.target;
+          if (!(form instanceof HTMLFormElement)) return;
 
-        // Our own resubmission after a "Yes." — let it through untouched.
-        if (form.dataset.bypassWarning) {
-          delete form.dataset.bypassWarning;
-          return;
-        }
-
-        const submitter = event.submitter;
-        const action = submitter?.getAttribute("formaction") || form.getAttribute("action") || "";
-        const taken = Number(document.body.dataset.takenThisSemester ?? "0");
-        const max = Number(document.body.dataset.maxCoursesPerSemester ?? "4");
-
-        let warning: { message: string; url: string } | null = null;
-        if (action.endsWith("/api/taken")) {
-          const actionField = form.querySelector<HTMLInputElement>('input[name="action"]');
-          const isAdding = !actionField || actionField.value !== "remove";
-          if (isAdding && taken >= max) {
-            warning = {
-              message: "Have you apply for enrolment overload?",
-              url: "https://www.anu.edu.au/students/program-administration/enrolment/overload-your-enrolment",
-            };
+          // Our own resubmission after a "Yes." — let it through untouched.
+          if (form.dataset.bypassWarning) {
+            delete form.dataset.bypassWarning;
+            return;
           }
-        } else if (action.endsWith("/api/semester")) {
-          if (taken < max) {
-            warning = {
-              message: "Have you apply for RSL (Reduce Study Load)?",
-              url: "https://www.anu.edu.au/students/program-administration/program-management/reducing-your-study-load-as-an-international-student-coursework",
-            };
-          }
-        }
-        if (!warning) return;
 
-        event.preventDefault();
-        const dialog = document.getElementById("warning-dialog") as HTMLDialogElement;
-        dialog.querySelector("[data-warning-message]")!.textContent = warning.message;
+          const submitter = event.submitter;
+          const action = submitter?.getAttribute("formaction") || form.getAttribute("action") || "";
+          const taken = Number(document.body.dataset.takenThisSemester ?? "0");
+          const max = Number(document.body.dataset.maxCoursesPerSemester ?? "4");
+          const takenUnits = Number(document.body.dataset.takenUnitsThisSemester ?? "0");
+          const maxUnits = Number(document.body.dataset.maxUnitsPerSemester ?? "24");
 
-        const chosenWarning = warning;
-        dialog.addEventListener(
-          "close",
-          () => {
-            if (dialog.returnValue === "yes") {
-              form.dataset.bypassWarning = "1";
-              form.requestSubmit(submitter ?? undefined);
-            } else if (dialog.returnValue === "no") {
-              window.open(chosenWarning.url, "_blank");
+          // The real ANU load rule is "4 courses AND 24 units" — a semester
+          // is full the moment either budget is spent, since a 12-unit
+          // capstone uses up the same room as two 6-unit courses.
+          let warning: { message: string; url: string } | null = null;
+          if (action.endsWith("/api/taken")) {
+            const actionField = form.querySelector<HTMLInputElement>('input[name="action"]');
+            const isAdding = !actionField || actionField.value !== "remove";
+            const courseUnits = Number(submitter?.getAttribute("data-course-units") ?? "0");
+            const wouldExceedCourses = taken >= max;
+            const wouldExceedUnits = takenUnits + courseUnits > maxUnits;
+            if (isAdding && (wouldExceedCourses || wouldExceedUnits)) {
+              warning = {
+                message: "Have you apply for enrolment overload?",
+                url: "https://www.anu.edu.au/students/program-administration/enrolment/overload-your-enrolment",
+              };
             }
-          },
-          { once: true },
-        );
+          } else if (action.endsWith("/api/semester")) {
+            const underCourses = taken < max;
+            const underUnits = takenUnits < maxUnits;
+            if (underCourses && underUnits) {
+              warning = {
+                message: "Have you apply for RSL (Reduce Study Load)?",
+                url: "https://www.anu.edu.au/students/program-administration/program-management/reducing-your-study-load-as-an-international-student-coursework",
+              };
+            }
+          } else if (action.endsWith("/api/restart")) {
+            // Restarting wipes progress back to 0 units — clear the
+            // one-time congrats flag so finishing the degree again later
+            // pops the dialog again instead of staying silent forever.
+            localStorage.removeItem("degree-complete-congratulated");
+          }
+          if (!warning) return;
+
+          // Intercept fully — before Astro's own submit listener runs at
+          // all — so no soft-navigation can start underneath the dialog.
+          event.preventDefault();
+          event.stopImmediatePropagation();
+
+          const dialog = document.getElementById("warning-dialog") as HTMLDialogElement;
+          dialog.querySelector("[data-warning-message]")!.textContent = warning.message;
+
+          const chosenWarning = warning;
+          dialog.addEventListener(
+            "close",
+            () => {
+              if (dialog.returnValue === "yes") {
+                form.dataset.bypassWarning = "1";
+                form.requestSubmit(submitter ?? undefined);
+              } else if (dialog.returnValue === "no") {
+                window.open(chosenWarning.url, "_blank");
+              }
+            },
+            { once: true },
+          );
+          dialog.showModal();
+        },
+        { capture: true },
+      );
+
+      // Fires on the initial load and after every view-transition swap
+      // (unlike a plain DOMContentLoaded, which only runs once) — checks
+      // fresh on each navigation whether the degree is now complete, and
+      // shows the congrats dialog at most once per completion via a
+      // localStorage flag (cleared on restart, above).
+      document.addEventListener("astro:page-load", () => {
+        const dialog = document.getElementById("congrats-dialog");
+        if (!(dialog instanceof HTMLDialogElement)) return;
+        if (document.body.dataset.degreeComplete !== "true") return;
+        if (localStorage.getItem("degree-complete-congratulated") === "1") return;
+        localStorage.setItem("degree-complete-congratulated", "1");
         dialog.showModal();
       });
     </script>

@@ -114,6 +114,29 @@ describe("planFor", () => {
     expect(deferred?.reasons).toContain("Semester course limit reached (max 4 per semester)");
   });
 
+  it("caps recommendations at 24 units, deferring even under four courses once a 12-unit course is included", () => {
+    const capstone: Course = { id: 8, code: "CAP1", title: "Capstone", units: 12 };
+    const plan = basePlanFor({
+      requirements: [
+        ...requirements,
+        { specialisationId: 10, courseId: 4, category: "required" as const, choiceGroup: null },
+        { specialisationId: 10, courseId: 8, category: "required" as const, choiceGroup: null },
+      ],
+      offeredCourseIds: [1, 2, 3, 4, 5, 6, 7, 8],
+      courses: [...courses, capstone],
+    });
+
+    // CORE1(6) + ML1(6) + DS1(6) = 18 units, 3 courses; the 12-unit capstone
+    // would push the total to 30 units, over the 24-unit cap, even though
+    // only 3 courses (not yet 4) have been committed.
+    expect(plan.takeThisSemester.map((c) => c.code)).toEqual(
+      expect.arrayContaining(["CORE1", "ML1", "DS1"]),
+    );
+    expect(plan.takeThisSemester.map((c) => c.code)).not.toContain("CAP1");
+    const deferred = plan.notYetAvailable.find(({ course }) => course.code === "CAP1");
+    expect(deferred?.reasons).toContain("Semester unit limit reached (max 24 units per semester)");
+  });
+
   it("doesn't let a prerequisite completed this same semester unlock the course that needs it yet", () => {
     const plan = basePlanFor({ takenCourseIds: [2], takenBeforeThisSemesterCourseIds: [] });
 

@@ -274,16 +274,24 @@ export function seedIfEmpty(db: BetterSQLite3Database) {
       ])
       .run();
 
+    // The Master of Computing is a 2-year, 4-semester program — seed both
+    // years so a student can advance all the way through it, not just once.
     const semesterRows = tx
       .insert(semesters)
       .values([
         { year: 2026, term: "S1", label: "2026 Semester 1", isCurrent: true },
         { year: 2026, term: "S2", label: "2026 Semester 2", isCurrent: false },
+        { year: 2027, term: "S1", label: "2027 Semester 1", isCurrent: false },
+        { year: 2027, term: "S2", label: "2027 Semester 2", isCurrent: false },
       ])
       .returning()
       .all();
-    const s1 = semesterRows.find((s) => s.term === "S1")!.id;
-    const s2 = semesterRows.find((s) => s.term === "S2")!.id;
+    const s1ByYear = new Map(
+      semesterRows.filter((s) => s.term === "S1").map((s) => [s.year, s.id]),
+    );
+    const s2ByYear = new Map(
+      semesterRows.filter((s) => s.term === "S2").map((s) => [s.year, s.id]),
+    );
 
     const offeringPlan: [string, ("S1" | "S2")[]][] = [
       ["COMP6710", ["S1", "S2"]],
@@ -341,10 +349,15 @@ export function seedIfEmpty(db: BetterSQLite3Database) {
       ["ELEC6001", ["S1", "S2"]],
       ["ELEC6002", ["S1", "S2"]],
     ];
+    // A course's S1/S2 slot repeats every year, same as the real program —
+    // so each offering row is duplicated across both 2026 and 2027.
     tx.insert(offerings)
       .values(
         offeringPlan.flatMap(([code, terms]) =>
-          terms.map((term) => ({ courseId: courseId[code], semesterId: term === "S1" ? s1 : s2 })),
+          terms.flatMap((term) => {
+            const byYear = term === "S1" ? s1ByYear : s2ByYear;
+            return [...byYear.values()].map((semesterId) => ({ courseId: courseId[code], semesterId }));
+          }),
         ),
       )
       .run();

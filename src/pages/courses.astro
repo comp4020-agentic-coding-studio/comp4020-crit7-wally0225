@@ -6,8 +6,9 @@ import {
   listPrerequisites,
   listTakenCourseIds,
   listTakenCourseIdsInSemester,
+  unitsTakenInSemester,
 } from "../lib/db";
-import { MAX_COURSES_PER_SEMESTER } from "../lib/recommend";
+import { MAX_COURSES_PER_SEMESTER, MAX_UNITS_PER_SEMESTER } from "../lib/recommend";
 import Layout from "../layouts/Layout.astro";
 
 const courses = listCourses();
@@ -17,6 +18,7 @@ const incompatibilities = listIncompatibilities();
 const codeById = new Map(courses.map((c) => [c.id, c.code]));
 const semester = getCurrentSemester();
 const takenThisSemesterCount = listTakenCourseIdsInSemester(semester.id).length;
+const takenUnitsThisSemester = unitsTakenInSemester(semester.id);
 
 // One "Requisite and Incompatibility" line per course, mirroring the section
 // of the same name on the course's own ANU page: mandatory prerequisites are
@@ -47,6 +49,8 @@ function requisiteLines(courseId: number) {
   active="courses"
   takenThisSemesterCount={takenThisSemesterCount}
   maxCoursesPerSemester={MAX_COURSES_PER_SEMESTER}
+  takenUnitsThisSemester={takenUnitsThisSemester}
+  maxUnitsPerSemester={MAX_UNITS_PER_SEMESTER}
 >
   <h1>Course catalogue</h1>
   <p>
@@ -108,7 +112,10 @@ function requisiteLines(courseId: number) {
                   <input type="hidden" name="courseId" value={course.id} />
                   <input type="hidden" name="back" value="/courses/" />
                   <input type="hidden" name="action" value={taken ? "remove" : "add"} />
-                  <button class={`btn-toggle ${taken ? "btn-toggle--done" : "btn-toggle--pending"}`}>
+                  <button
+                    class={`btn-toggle ${taken ? "btn-toggle--done" : "btn-toggle--pending"}`}
+                    data-course-units={course.units}
+                  >
                     {taken ? "Mark not completed" : "Mark completed"}
                   </button>
                 </form>

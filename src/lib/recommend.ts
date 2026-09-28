@@ -15,6 +15,12 @@ const POOL_UNITS_REQUIRED: Record<string, number> = {
 // single semester, no matter how many are otherwise ready.
 export const MAX_COURSES_PER_SEMESTER = 4;
 
+// ...and a full-time load is also capped at 24 units regardless of course
+// count. Most courses are 6 units (4 of them fills both caps at once), but
+// the capstone courses (COMP8715/COMP8830) are 12 units each, so a semester
+// that includes one is full at just three courses, not four.
+export const MAX_UNITS_PER_SEMESTER = 24;
+
 const POOL_LABEL: Record<string, string> = {
   elective: "Specialisation electives",
   computing_elective: "Computing electives (any further 6000–8000 level COMP or ENGN course)",
@@ -150,24 +156,34 @@ export function planFor(inputs: PlanInputs): Plan {
 
   // Otherwise-ready courses still compete for a shared semester budget, in
   // the same priority order the buckets below are built in (mandatory ->
-  // choice groups -> electives). Once the budget's spent, a course that
-  // would've been ready is deferred with a reason instead, using the same
-  // notYetAvailable UI as a real prerequisite block.
+  // choice groups -> electives). Once either budget's spent — four courses,
+  // or 24 units, whichever comes first — a course that would've been ready
+  // is deferred with a reason instead, using the same notYetAvailable UI as
+  // a real prerequisite block.
   let semesterSlotsUsed = 0;
+  let semesterUnitsUsed = 0;
   const commit = (
     course: Course,
     onAccept: (c: Course) => void,
     onDefer: (b: BlockedCourse) => void,
   ) => {
-    if (semesterSlotsUsed < MAX_COURSES_PER_SEMESTER) {
-      onAccept(course);
-      semesterSlotsUsed++;
-    } else {
+    if (semesterSlotsUsed >= MAX_COURSES_PER_SEMESTER) {
       onDefer({
         course,
         reasons: [`Semester course limit reached (max ${MAX_COURSES_PER_SEMESTER} per semester)`],
       });
+      return;
     }
+    if (semesterUnitsUsed + course.units > MAX_UNITS_PER_SEMESTER) {
+      onDefer({
+        course,
+        reasons: [`Semester unit limit reached (max ${MAX_UNITS_PER_SEMESTER} units per semester)`],
+      });
+      return;
+    }
+    onAccept(course);
+    semesterSlotsUsed++;
+    semesterUnitsUsed += course.units;
   };
 
   const takeThisSemester: Course[] = [];
