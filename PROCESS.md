@@ -1,54 +1,50 @@
 # Process overview
 
-<!-- TEMPLATE: this file is a shape to fill in, not a form. Replace everything
-     in it with your own overview, and delete this comment — `pnpm
-     check:evidence` will remind you if it's still here. -->
-
-Written by you, for a reader: how you got from the brief to the harness and
-agentic workflow behind this submission. Markers read this file and follow its
-citations; they don't trawl the repo for evidence you didn't point at.
-
-This file is the shape; the course site's
-[assessment page](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#what-you-submit)
-is the requirement, and its
-[word counts](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#word-counts)
-cover every deliverable.
-
 ## What I built
 
-A sentence or two. `README.md` is where the account of what the app is and what
-good means here lives; this file is how you got there.
+A Master of Computing degree planner, seeded with the real ANU program data —
+prerequisites, incompatibilities, choice groups, elective pools — that tells a
+student what they can take next and enforces the program's actual enrolment
+rules: a 4-course/24-unit semester cap, prerequisites that must land in an
+earlier semester, and the paperwork consequences (overload, RSL) of going
+outside those caps.
 
 ## How I got here
 
-The account of the process: how the work actually went, and how you knew the
-result was right. Tell it in whatever order makes it clear. A weekly prototype
-needs a paragraph or two; an assignment needs more.
+The curriculum itself came first: real course data
+[`415ff96`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-wally0225/commit/415ff96),
+then real prerequisite/incompatibility rules rendered on screen
+[`8e4bb3c`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-wally0225/commit/8e4bb3c),
+a 4-course-per-semester cap
+[`1fa4c06`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-wally0225/commit/1fa4c06),
+and a rule that a prerequisite only counts once it's completed in an earlier
+semester, not the same one
+[`6692bc5`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-wally0225/commit/6692bc5).
 
-Cite the record as you go, as links whose text is the commit hash or range and
-whose target is this repo's commit or compare URL, so a reader clicks straight
-to the evidence:
+Everything after that came from using the tool as a real student would.
+Marking a 5th course or advancing under-loaded has a real ANU consequence, so:
 
-- one commit: [`a1b2c3d`](https://github.com/YOUR-ORG/YOUR-REPO/commit/a1b2c3d)
-- a range:
-  [`a1b2c3d...e4f5a6b`](https://github.com/YOUR-ORG/YOUR-REPO/compare/a1b2c3d...e4f5a6b)
+> if user already mark 4 courses in one semester, and they choose the fifth
+> one, then system should have a popup window... and direct user to this page
 
-To pair a prompt with the commit it produced, quote the prompt (curated, not a
-full transcript) next to the citation:
+became a confirm-and-block `<dialog>`
+[`04d02ba`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-wally0225/commit/04d02ba)
+— fixed once more for a flicker bug where Astro's view-transition listener
+raced the dialog closed before the student could click anything.
 
-> the prompt, verbatim
+Three more prompts landed together in one pass, each closing a gap between the
+model and the real program:
 
-Screenshots are welcome where one carries the point better than a sentence does.
-Commit the file to this repo and link it with a **relative** path, which is what
-makes it render on GitHub: `![alt text](docs/before.png)`. Images don't count
-towards the word count and don't replace the citation.
+> Master of Computing is a 2 years program, let user can advanced to 2027 S2...
+> add a restart button
 
-## Before you ship
+> COMP8715 ... is a twelve units course, so ... Update the rules from 4 courses
+> to 4 course AND needs to be 24 units each semester
 
-`pnpm check:evidence` verifies that this comment is gone, that your citations
-resolve to real commits, that a crit week's reflection entry is in
-`reflections/`, and that your `CLAUDE.md` is there. It checks that your account
-is traceable, not that it is good: that is the marker's call.
+> when user complete 96 units and complete their degree, then shows Congrates!
+> popup window
 
-Images aren't checked: unlike a citation whose SHA doesn't resolve, a broken
-image is visible the moment this file is rendered on GitHub.
+— all in
+[`96e8a8a`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-wally0225/commit/96e8a8a),
+each checked against `pnpm check` (44/44 tests, 0 type errors) and a manual
+browser pass before it was committed.
