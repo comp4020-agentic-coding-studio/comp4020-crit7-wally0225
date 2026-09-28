@@ -5,9 +5,11 @@ import "../styles.css";
 interface Props {
   title: string;
   active: "dashboard" | "courses" | "about";
+  takenThisSemesterCount?: number;
+  maxCoursesPerSemester?: number;
 }
 
-const { title, active } = Astro.props;
+const { title, active, takenThisSemesterCount = 0, maxCoursesPerSemester = 4 } = Astro.props;
 
 const navItems = [
   { href: "/", label: "Dashboard", key: "dashboard" as const },
@@ -24,7 +26,7 @@ const navItems = [
     <title>{title}</title>
     <ClientRouter />
   </head>
-  <body>
+  <body data-taken-this-semester={takenThisSemesterCount} data-max-courses-per-semester={maxCoursesPerSemester}>
     <header class="site-header" transition:persist transition:name="site-header">
       <p class="site-header__crest">The Australian National University</p>
       <p class="site-header__system">Programs &amp; Courses — Degree Planner</p>
@@ -59,5 +61,79 @@ const navItems = [
         >.
       </p>
     </footer>
+
+    <dialog id="warning-dialog" class="warning-dialog">
+      <form method="dialog">
+        <p data-warning-message></p>
+        <div class="warning-dialog__actions">
+          <button value="yes">Yes.</button>
+          <button value="no">No, take me there.</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script>
+      // Real ANU administrative consequences of over/under-enrolling that
+      // this planner doesn't process itself — a confirm-and-block gate on
+      // every "Mark complete" / "Advance to ..." submission wherever it
+      // appears (dashboard, elective pools, course catalogue). Delegated on
+      // document (survives Astro's view-transition page swaps) and reads
+      // the taken-count fresh from <body> on each submit, rather than
+      // closing over a value that could go stale across transitions.
+      document.addEventListener("submit", (event) => {
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement)) return;
+
+        // Our own resubmission after a "Yes." — let it through untouched.
+        if (form.dataset.bypassWarning) {
+          delete form.dataset.bypassWarning;
+          return;
+        }
+
+        const submitter = event.submitter;
+        const action = submitter?.getAttribute("formaction") || form.getAttribute("action") || "";
+        const taken = Number(document.body.dataset.takenThisSemester ?? "0");
+        const max = Number(document.body.dataset.maxCoursesPerSemester ?? "4");
+
+        let warning: { message: string; url: string } | null = null;
+        if (action.endsWith("/api/taken")) {
+          const actionField = form.querySelector<HTMLInputElement>('input[name="action"]');
+          const isAdding = !actionField || actionField.value !== "remove";
+          if (isAdding && taken >= max) {
+            warning = {
+              message: "Have you apply for enrolment overload?",
+              url: "https://www.anu.edu.au/students/program-administration/enrolment/overload-your-enrolment",
+            };
+          }
+        } else if (action.endsWith("/api/semester")) {
+          if (taken < max) {
+            warning = {
+              message: "Have you apply for RSL (Reduce Study Load)?",
+              url: "https://www.anu.edu.au/students/program-administration/program-management/reducing-your-study-load-as-an-international-student-coursework",
+            };
+          }
+        }
+        if (!warning) return;
+
+        event.preventDefault();
+        const dialog = document.getElementById("warning-dialog") as HTMLDialogElement;
+        dialog.querySelector("[data-warning-message]")!.textContent = warning.message;
+
+        const chosenWarning = warning;
+        dialog.addEventListener(
+          "close",
+          () => {
+            if (dialog.returnValue === "yes") {
+              form.dataset.bypassWarning = "1";
+              form.requestSubmit(submitter ?? undefined);
+            } else if (dialog.returnValue === "no") {
+              window.open(chosenWarning.url, "_blank");
+            }
+          },
+          { once: true },
+        );
+        dialog.showModal();
+      });
+    </script>
   </body>
 </html>

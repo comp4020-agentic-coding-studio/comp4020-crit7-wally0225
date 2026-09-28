@@ -81,6 +81,18 @@ export function markTaken(courseId: number) {
   db.insert(takenCourses).values({ courseId, semesterId: semester.id }).onConflictDoNothing().run();
 }
 
+// How many courses were marked complete in a given semester — used to warn
+// about enrolment overload (5th+ course) or a reduced study load (advancing
+// with fewer than the max), not for prerequisite logic.
+export function listTakenCourseIdsInSemester(semesterId: number): number[] {
+  return db
+    .select({ courseId: takenCourses.courseId })
+    .from(takenCourses)
+    .where(eq(takenCourses.semesterId, semesterId))
+    .all()
+    .map((row) => row.courseId);
+}
+
 // A prerequisite only counts once it was completed in an earlier semester
 // than the one being planned for — completing it this semester doesn't
 // guarantee a pass, so it can't unlock a course that requires it yet. Null

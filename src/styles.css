@@ -311,6 +311,23 @@ button:hover {
   background: #a5730a;
 }
 
+.warning-dialog {
+  border: 1px solid var(--anu-line);
+  border-radius: 2px;
+  padding: 1.25rem 1.5rem;
+  max-width: 26rem;
+}
+
+.warning-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.warning-dialog__actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
 .site-footer {
   border-top: 1px solid var(--anu-line);
   padding: 1.25rem 1.5rem 2rem;

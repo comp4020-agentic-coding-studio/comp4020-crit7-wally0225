@@ -13,7 +13,7 @@ const POOL_UNITS_REQUIRED: Record<string, number> = {
 
 // A real degree-load rule: a student can only enrol in four courses in a
 // single semester, no matter how many are otherwise ready.
-const MAX_COURSES_PER_SEMESTER = 4;
+export const MAX_COURSES_PER_SEMESTER = 4;
 
 const POOL_LABEL: Record<string, string> = {
   elective: "Specialisation electives",

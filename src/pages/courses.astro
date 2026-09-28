@@ -1,5 +1,13 @@
 ---
-import { listCourses, listIncompatibilities, listPrerequisites, listTakenCourseIds } from "../lib/db";
+import {
+  getCurrentSemester,
+  listCourses,
+  listIncompatibilities,
+  listPrerequisites,
+  listTakenCourseIds,
+  listTakenCourseIdsInSemester,
+} from "../lib/db";
+import { MAX_COURSES_PER_SEMESTER } from "../lib/recommend";
 import Layout from "../layouts/Layout.astro";
 
 const courses = listCourses();
@@ -7,6 +15,8 @@ const takenCourseIds = new Set(listTakenCourseIds());
 const prerequisites = listPrerequisites();
 const incompatibilities = listIncompatibilities();
 const codeById = new Map(courses.map((c) => [c.id, c.code]));
+const semester = getCurrentSemester();
+const takenThisSemesterCount = listTakenCourseIdsInSemester(semester.id).length;
 
 // One "Requisite and Incompatibility" line per course, mirroring the section
 // of the same name on the course's own ANU page: mandatory prerequisites are
@@ -32,7 +42,12 @@ function requisiteLines(courseId: number) {
 }
 ---
 
-<Layout title="Degree planner — course catalogue" active="courses">
+<Layout
+  title="Degree planner — course catalogue"
+  active="courses"
+  takenThisSemesterCount={takenThisSemesterCount}
+  maxCoursesPerSemester={MAX_COURSES_PER_SEMESTER}
+>
   <h1>Course catalogue</h1>
   <p>
     Every course in the Master of Computing, for entering history from outside the current semester's
