@@ -37,6 +37,7 @@ const basePlanFor = (overrides: Partial<Parameters<typeof planFor>[0]>) =>
     specialisationId: 10,
     specialisationElectiveUnitsRequired: 0,
     takenCourseIds: [],
+    takenBeforeThisSemesterCourseIds: overrides.takenCourseIds ?? [],
     offeredCourseIds: [1, 2, 3, 4, 5, 6, 7],
     requirements,
     prerequisites,
@@ -111,5 +112,13 @@ describe("planFor", () => {
     expect(plan.takeThisSemester.map((c) => c.code)).toEqual(["CORE1", "ML1", "DS1", "OPT_A"]);
     const deferred = plan.notYetAvailable.find(({ course }) => course.code === "OPT_B");
     expect(deferred?.reasons).toContain("Semester course limit reached (max 4 per semester)");
+  });
+
+  it("doesn't let a prerequisite completed this same semester unlock the course that needs it yet", () => {
+    const plan = basePlanFor({ takenCourseIds: [2], takenBeforeThisSemesterCourseIds: [] });
+
+    expect(plan.takeThisSemester.map((c) => c.code)).not.toContain("ML2");
+    const blocked = plan.notYetAvailable.find(({ course }) => course.code === "ML2");
+    expect(blocked?.reasons).toContain("Requires ML1 to be completed in an earlier semester");
   });
 });

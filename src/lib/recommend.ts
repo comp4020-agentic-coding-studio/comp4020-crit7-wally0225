@@ -25,6 +25,10 @@ export interface PlanInputs {
   specialisationId: number;
   specialisationElectiveUnitsRequired: number;
   takenCourseIds: number[];
+  // Subset of takenCourseIds completed strictly before this semester — a
+  // prerequisite only counts as satisfied against this set, not takenSet,
+  // since finishing it this semester doesn't guarantee a pass yet.
+  takenBeforeThisSemesterCourseIds: number[];
   offeredCourseIds: number[];
   requirements: RequirementRow[];
   prerequisites: PrerequisiteRow[];
@@ -62,6 +66,7 @@ export function planFor(inputs: PlanInputs): Plan {
     specialisationId,
     specialisationElectiveUnitsRequired,
     takenCourseIds,
+    takenBeforeThisSemesterCourseIds,
     offeredCourseIds,
     requirements,
     prerequisites,
@@ -70,6 +75,7 @@ export function planFor(inputs: PlanInputs): Plan {
   } = inputs;
 
   const takenSet = new Set(takenCourseIds);
+  const takenBeforeSet = new Set(takenBeforeThisSemesterCourseIds);
   const offeredSet = new Set(offeredCourseIds);
   const courseById = new Map(courses.map((c) => [c.id, c]));
   const codeOf = (id: number) => courseById.get(id)?.code ?? `#${id}`;
@@ -111,12 +117,25 @@ export function planFor(inputs: PlanInputs): Plan {
     const reasons: string[] = [];
     if (!offeredSet.has(courseId)) reasons.push("Not offered this semester");
 
+    // A course completed this same semester still isn't a met prerequisite
+    // yet (no guarantee it'll be passed) — say so distinctly from "not
+    // taken at all" so the student isn't confused by a course they just
+    // marked complete still blocking something else.
+    const prereqReason = (label: string, ids: number[]) => {
+      const takenThisSemester = ids.some((id) => takenSet.has(id) && !takenBeforeSet.has(id));
+      return takenThisSemester
+        ? `Requires ${label} to be completed in an earlier semester`
+        : `Requires ${label}`;
+    };
+
     for (const requiresCourseId of mandatoryByCourse.get(courseId) ?? []) {
-      if (!takenSet.has(requiresCourseId)) reasons.push(`Requires ${codeOf(requiresCourseId)}`);
+      if (!takenBeforeSet.has(requiresCourseId)) {
+        reasons.push(prereqReason(codeOf(requiresCourseId), [requiresCourseId]));
+      }
     }
     for (const groupIds of (groupedByCourse.get(courseId) ?? new Map<string, number[]>()).values()) {
-      if (!groupIds.some((id) => takenSet.has(id))) {
-        reasons.push(`Requires one of: ${groupIds.map(codeOf).join(", ")}`);
+      if (!groupIds.some((id) => takenBeforeSet.has(id))) {
+        reasons.push(prereqReason(`one of: ${groupIds.map(codeOf).join(", ")}`, groupIds));
       }
     }
 

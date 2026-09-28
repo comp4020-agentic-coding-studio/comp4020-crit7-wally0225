@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import Database from "better-sqlite3";
-import { eq, isNull, or } from "drizzle-orm";
+import { eq, isNull, lt, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { seedIfEmpty } from "./seed";
@@ -77,7 +77,22 @@ export function listTakenCourseIds(): number[] {
 }
 
 export function markTaken(courseId: number) {
-  db.insert(takenCourses).values({ courseId }).onConflictDoNothing().run();
+  const semester = getCurrentSemester();
+  db.insert(takenCourses).values({ courseId, semesterId: semester.id }).onConflictDoNothing().run();
+}
+
+// A prerequisite only counts once it was completed in an earlier semester
+// than the one being planned for — completing it this semester doesn't
+// guarantee a pass, so it can't unlock a course that requires it yet. Null
+// semesterId is legacy data (completed before this column existed) and
+// counts as satisfying any prerequisite check.
+export function listTakenBeforeCourseIds(currentSemesterId: number): number[] {
+  return db
+    .select({ courseId: takenCourses.courseId })
+    .from(takenCourses)
+    .where(or(isNull(takenCourses.semesterId), lt(takenCourses.semesterId, currentSemesterId)))
+    .all()
+    .map((row) => row.courseId);
 }
 
 export function markUntaken(courseId: number) {

@@ -106,6 +106,11 @@ export const takenCourses = sqliteTable("taken_courses", {
   courseId: int("course_id")
     .primaryKey()
     .references(() => courses.id),
+  // Which semester this was completed in, so a prerequisite check can
+  // require "before this semester" rather than just "ever". Null means
+  // completed before this column existed — treated as satisfying any
+  // prerequisite check, so existing plans aren't retroactively re-blocked.
+  semesterId: int("semester_id").references(() => semesters.id),
   completedAt: text("completed_at")
     .notNull()
     .default(sql`(datetime('now'))`),

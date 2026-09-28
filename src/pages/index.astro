@@ -9,6 +9,7 @@ import {
   listRequirements,
   listSemesters,
   listSpecialisations,
+  listTakenBeforeCourseIds,
   listTakenCourseIds,
 } from "../lib/db";
 import { planFor } from "../lib/recommend";
@@ -28,6 +29,7 @@ const plan = planFor({
   specialisationId,
   specialisationElectiveUnitsRequired: currentSpecialisation?.electiveUnitsRequired ?? 0,
   takenCourseIds,
+  takenBeforeThisSemesterCourseIds: listTakenBeforeCourseIds(semester.id),
   offeredCourseIds: listOfferedCourseIds(semester.id),
   requirements: listRequirements(specialisationId),
   prerequisites: listPrerequisites(),

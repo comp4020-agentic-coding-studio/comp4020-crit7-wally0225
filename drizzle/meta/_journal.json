@@ -22,6 +22,13 @@
       "when": 1790572286825,
       "tag": "0002_spotty_wolfsbane",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1790575333977,
+      "tag": "0003_wide_wind_dancer",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE `taken_courses` ADD `semester_id` integer REFERENCES semesters(id);
