@@ -11,6 +11,10 @@ const POOL_UNITS_REQUIRED: Record<string, number> = {
   university_elective: 12,
 };
 
+// A real degree-load rule: a student can only enrol in four courses in a
+// single semester, no matter how many are otherwise ready.
+const MAX_COURSES_PER_SEMESTER = 4;
+
 const POOL_LABEL: Record<string, string> = {
   elective: "Specialisation electives",
   computing_elective: "Computing electives (any further 6000–8000 level COMP or ENGN course)",
@@ -125,6 +129,28 @@ export function planFor(inputs: PlanInputs): Plan {
     return reasons;
   };
 
+  // Otherwise-ready courses still compete for a shared semester budget, in
+  // the same priority order the buckets below are built in (mandatory ->
+  // choice groups -> electives). Once the budget's spent, a course that
+  // would've been ready is deferred with a reason instead, using the same
+  // notYetAvailable UI as a real prerequisite block.
+  let semesterSlotsUsed = 0;
+  const commit = (
+    course: Course,
+    onAccept: (c: Course) => void,
+    onDefer: (b: BlockedCourse) => void,
+  ) => {
+    if (semesterSlotsUsed < MAX_COURSES_PER_SEMESTER) {
+      onAccept(course);
+      semesterSlotsUsed++;
+    } else {
+      onDefer({
+        course,
+        reasons: [`Semester course limit reached (max ${MAX_COURSES_PER_SEMESTER} per semester)`],
+      });
+    }
+  };
+
   const takeThisSemester: Course[] = [];
   const notYetAvailable: BlockedCourse[] = [];
   let unitsDone = 0;
@@ -143,8 +169,15 @@ export function planFor(inputs: PlanInputs): Plan {
       continue;
     }
     const reasons = blockingReasons(req.courseId);
-    if (reasons.length === 0) takeThisSemester.push(course);
-    else notYetAvailable.push({ course, reasons });
+    if (reasons.length === 0) {
+      commit(
+        course,
+        (c) => takeThisSemester.push(c),
+        (b) => notYetAvailable.push(b),
+      );
+    } else {
+      notYetAvailable.push({ course, reasons });
+    }
   }
 
   // Choice groups: mandatory, but satisfied by any ONE course sharing a
@@ -173,8 +206,14 @@ export function planFor(inputs: PlanInputs): Plan {
     const notTaken = groupCourses.filter((c) => !takenSet.has(c.id));
     const withReasons = notTaken.map((c) => ({ course: c, reasons: blockingReasons(c.id) }));
     const ready = withReasons.filter((c) => c.reasons.length === 0);
-    if (ready.length > 0) takeThisSemester.push(...ready.map((c) => c.course));
-    else notYetAvailable.push(...withReasons);
+    notYetAvailable.push(...withReasons.filter((c) => c.reasons.length > 0));
+    for (const c of ready) {
+      commit(
+        c.course,
+        (course) => takeThisSemester.push(course),
+        (b) => notYetAvailable.push(b),
+      );
+    }
   }
 
   // Elective-like pools: pick freely from a list up to a unit threshold. One
@@ -201,8 +240,15 @@ export function planFor(inputs: PlanInputs): Plan {
         continue;
       }
       const reasons = blockingReasons(req.courseId);
-      if (reasons.length === 0) available.push(course);
-      else blocked.push({ course, reasons });
+      if (reasons.length === 0) {
+        commit(
+          course,
+          (c) => available.push(c),
+          (b) => blocked.push(b),
+        );
+      } else {
+        blocked.push({ course, reasons });
+      }
     }
 
     unitsRequired += threshold;

@@ -98,4 +98,18 @@ describe("planFor", () => {
     const blocked = plan.notYetAvailable.find(({ course }) => course.code === "ML2");
     expect(blocked?.reasons).toContain("Not compatible with DS1 (already completed)");
   });
+
+  it("caps recommendations at four courses per semester, deferring the rest with a reason", () => {
+    const plan = basePlanFor({
+      requirements: [
+        ...requirements,
+        { specialisationId: 10, courseId: 4, category: "required" as const, choiceGroup: null },
+      ],
+    });
+
+    expect(plan.takeThisSemester.length).toBe(4);
+    expect(plan.takeThisSemester.map((c) => c.code)).toEqual(["CORE1", "ML1", "DS1", "OPT_A"]);
+    const deferred = plan.notYetAvailable.find(({ course }) => course.code === "OPT_B");
+    expect(deferred?.reasons).toContain("Semester course limit reached (max 4 per semester)");
+  });
 });
